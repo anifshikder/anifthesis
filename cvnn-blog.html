@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Remembering by walking the network</title>
+<style>
+  :root{
+    --ink:#101820;
+    --paper:#f3efe6;
+    --paper-2:#e9e3d6;
+    --wave-deep:#1d3b5c;
+    --wave-mid:#3f73a6;
+    --wave-crest:#cdbf9a;
+    --signal:#c8552b;
+    --signal-2:#e0a23c;
+    --line:rgba(16,24,32,.14);
+    --line-strong:rgba(16,24,32,.3);
+    --mut:#5d6670;
+    --maxw:760px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    font-size:19px;line-height:1.65;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+  .mono{font-family:"SF Mono",ui-monospace,"Cascadia Code",Menlo,Consolas,monospace}
+
+  header.hero{
+    position:relative;overflow:hidden;
+    background:var(--ink);color:var(--paper);
+    border-bottom:1px solid #000;
+  }
+  #heroCanvas{display:block;width:100%;height:46vh;min-height:300px;max-height:440px}
+  .hero-text{
+    position:absolute;left:0;right:0;bottom:0;padding:26px 22px 30px;
+    background:linear-gradient(to top,rgba(16,24,32,.92),rgba(16,24,32,.0));
+  }
+  .hero-text .inner{max-width:var(--maxw);margin:0 auto}
+  .eyebrow{
+    font-family:"SF Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--signal-2);margin:0 0 10px;font-weight:600;
+  }
+  h1{
+    font-size:clamp(31px,6.4vw,56px);line-height:1.02;margin:0;font-weight:600;
+    letter-spacing:-.01em;text-wrap:balance;
+  }
+  h1 em{font-style:italic;color:var(--wave-crest)}
+  .deck{margin:14px 0 0;font-size:18px;color:rgba(243,239,230,.82);max-width:560px}
+
+  main{padding:54px 0 80px}
+  section{margin:0 0 8px}
+  .lede{font-size:23px;line-height:1.5}
+  p{margin:0 0 22px}
+  h2{
+    font-size:clamp(25px,4vw,33px);line-height:1.1;margin:62px 0 6px;font-weight:600;
+    letter-spacing:-.01em;text-wrap:balance;
+  }
+  .sec-num{
+    display:block;font-family:"SF Mono",ui-monospace,monospace;font-size:12px;
+    letter-spacing:.2em;color:var(--signal);margin-bottom:14px;font-weight:600;
+  }
+  a{color:var(--signal);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px}
+  strong{font-weight:600}
+  .term{border-bottom:2px solid var(--signal-2);padding-bottom:1px}
+
+  blockquote{
+    margin:30px 0;padding:4px 0 4px 22px;border-left:3px solid var(--signal);
+    font-size:21px;line-height:1.45;font-style:italic;color:#22303c;
+  }
+
+  .eq{
+    display:block;margin:24px auto;padding:16px 18px;background:var(--ink);color:var(--paper);
+    border-radius:8px;font-family:"SF Mono",ui-monospace,monospace;font-size:15px;
+    text-align:center;overflow-x:auto;letter-spacing:.01em;
+  }
+  .eq .small{color:var(--wave-crest);font-size:12px;display:block;margin-top:8px;letter-spacing:.04em}
+
+  .panel{
+    margin:34px 0;padding:22px;background:#fff;border:1px solid var(--line);
+    border-radius:12px;box-shadow:0 1px 0 rgba(16,24,32,.04),0 14px 30px -22px rgba(16,24,32,.5);
+  }
+  .panel h3{
+    margin:0 0 4px;font-size:14px;font-family:"SF Mono",ui-monospace,monospace;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--mut);font-weight:600;
+  }
+  .panel .cap{font-size:15px;color:var(--mut);line-height:1.45;margin:0 0 16px}
+  .panel canvas{display:block;width:100%;border-radius:6px;background:var(--ink)}
+  .controls{display:flex;flex-wrap:wrap;gap:18px 26px;align-items:center;margin-top:16px}
+  .ctl{display:flex;flex-direction:column;gap:5px;min-width:130px;flex:1}
+  .ctl label{font-size:12px;font-family:"SF Mono",ui-monospace,monospace;letter-spacing:.06em;color:var(--mut);text-transform:uppercase}
+  .ctl .val{color:var(--signal);font-weight:700}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+    background:var(--paper-2);outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+    background:var(--signal);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:16px;height:16px;border-radius:50%;background:var(--signal);
+    border:3px solid #fff;cursor:pointer;
+  }
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  button.tap{
+    font-family:"SF Mono",ui-monospace,monospace;font-size:13px;letter-spacing:.04em;
+    padding:9px 16px;border-radius:7px;border:1px solid var(--ink);background:var(--ink);
+    color:var(--paper);cursor:pointer;transition:transform .08s,background .15s;font-weight:600;
+  }
+  button.tap:hover{background:#2a3947}
+  button.tap:active{transform:translateY(1px)}
+  button.tap.ghost{background:transparent;color:var(--ink)}
+  button.tap.ghost:hover{background:var(--paper-2)}
+  button.tap.on{background:var(--signal);border-color:var(--signal)}
+
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--mut);margin-top:14px;align-items:center}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:14px;height:14px;border-radius:3px;display:inline-block}
+
+  figure{margin:30px 0}
+  figcaption{font-size:14px;color:var(--mut);line-height:1.5;margin-top:10px;font-family:"SF Mono",ui-monospace,monospace;letter-spacing:.01em}
+
+  .pull{
+    font-size:clamp(22px,3.6vw,30px);line-height:1.25;font-weight:600;letter-spacing:-.01em;
+    margin:56px 0;color:var(--wave-deep);text-wrap:balance;
+  }
+
+  .keycard{
+    display:grid;grid-template-columns:auto 1fr;gap:4px 18px;margin:30px 0;
+    padding:22px;border:1px solid var(--line);border-radius:12px;background:var(--paper-2);
+  }
+  .keycard .n{font-family:"SF Mono",ui-monospace,monospace;color:var(--signal);font-weight:700;font-size:15px}
+  .keycard .t{margin:0 0 14px}
+  .keycard .t:last-child{margin-bottom:0}
+
+  footer{
+    border-top:1px solid var(--line-strong);margin-top:60px;padding:34px 0 70px;
+    font-size:14px;color:var(--mut);
+  }
+  footer .authors{color:var(--ink);margin-bottom:6px}
+  footer a{color:var(--mut)}
+
+  .progress{position:fixed;top:0;left:0;height:3px;background:var(--signal);width:0;z-index:50}
+
+  .backlink{display:inline-flex;align-items:center;gap:8px;margin:0 0 30px;
+    font-family:"SF Mono",ui-monospace,monospace;font-size:13px;letter-spacing:.04em;color:var(--mut)}
+  .backlink:hover{color:var(--signal)}
+
+  @media (max-width:640px){
+    body{font-size:18px}
+    .controls{gap:14px 18px}
+    .ctl{min-width:46%}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="prog"></div>
+
+<header class="hero">
+  <canvas id="heroCanvas"></canvas>
+  <div class="hero-text">
+    <div class="inner">
+      <p class="eyebrow">Associative memory &middot; Complex networks</p>
+      <h1>Remembering by <em>walking</em> the network</h1>
+      <p class="deck">Classic memory networks recall a pattern by sliding downhill into an energy valley you can't see into. A new model rebuilds the whole memory by sending waves walking across the network, and you can watch every step.</p>
+    </div>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <a class="backlink" href="blog.html">&larr; All writing</a>
+
+  <p class="lede">Recalling a whole memory from a fragment, a face from a glimpse, a song from its first notes, is something brains do effortlessly. Machines do it too, with <em>associative memories</em>: store a set of patterns, then return the closest one from a partial or noisy cue.</p>
+
+  <p>The reigning models, from the classic Hopfield network to its modern attention-based descendants, all explain recall the same way: memories are valleys in an <span class="term">energy landscape</span>, and recall is a slide downhill toward the nearest one. It works, but it's indirect. The dynamics have no closed-form trajectory, so you can say where recall <em>ends up</em> but not the path it took, which makes robustness and the dreaded "spurious states" hard to pin down.</p>
+
+  <p>A paper by Shikder, Liboni, Min&aacute;&#269;, Budzinski and Muller takes a different route, resting on one technical fact: their network can be <strong>solved exactly</strong>.</p>
+
+  <!-- ===================== SECTION 1 ===================== -->
+  <section>
+    <h2><span class="sec-num">01 / The shift</span>From energy descent to explicit trajectory</h2>
+
+    <p>The model is a network of coupled <span class="term">complex-valued oscillators</span>. A nonlinear change of variables turns its dynamics into a strikingly simple linear form:</p>
+
+    <div class="eq">
+      x(t) = e<sup>Kt</sup> x(0)
+      <span class="small">the cue x(0) evolves by a single matrix exponential</span>
+    </div>
+
+    <p>That's the whole evolution. The connectivity matrix <span class="mono">K</span> is complex: its <em>modulus</em> sets the coupling strength along each edge, its <em>argument</em> sets a phase delay. Recall is no longer an iterative descent you can only simulate, it's an explicit linear evolution, read out in a single nonlinear step. And because the state at any time is something you can write down, you can interpret it directly.</p>
+  </section>
+
+  <!-- ===================== SECTION 2 ===================== -->
+  <section>
+    <h2><span class="sec-num">02 / The picture</span>Recall is a sum of complex walks</h2>
+
+    <p>Expanding that matrix exponential is where the intuition lives. The exponential is a sum of powers of <span class="mono">K</span>, and the entry of <span class="mono">K&#8467;</span> collects <strong>every walk of length &#8467;</strong> from one node to another across the network.</p>
+
+    <p>Because the edges are complex, each walk carries both an amplitude and a <em>phase</em>, the sum of the angles along its path, and walks combine by <strong>interference</strong>. Recall is then literally the network propagating the visible cue outward along all paths at once: walks that pass through a stored pattern arrive <em>in phase</em> and reinforce each other, rebuilding the occluded parts, while walks that would support a competing pattern arrive out of phase and cancel.</p>
+
+    <blockquote>An occluded pixel is resolved not by its own missing value, but by the coherent walks that reach it from the parts of the cue still visible.</blockquote>
+
+    <!-- INTERACTIVE 1: interference of walks -->
+    <div class="panel">
+      <h3>Interactive &middot; Walks interfering</h3>
+      <p class="cap">Many walks arrive at a missing pixel, each a vector whose angle is its accumulated phase. Slide the <em>phase spread</em>. When the walks agree (small spread) they add up to a strong, confident value, the pixel is reconstructed. When they disagree (large spread) they cancel to almost nothing. <strong>This is how a fragment grows back into a whole memory.</strong></p>
+      <canvas id="phasorCanvas" height="280"></canvas>
+      <div class="controls">
+        <div class="ctl">
+          <label>Phase spread <span class="val" id="spreadVal">0.20&pi;</span></label>
+          <input type="range" id="spread" min="0" max="1" step="0.01" value="0.2">
+        </div>
+        <div class="ctl">
+          <label>Number of walks <span class="val" id="nwVal">24</span></label>
+          <input type="range" id="nw" min="4" max="60" step="1" value="24">
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--wave-mid)"></span> individual walks</span>
+        <span><span class="swatch" style="background:var(--signal)"></span> resultant (the pixel)</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 3 ===================== -->
+  <section>
+    <h2><span class="sec-num">03 / The filtration</span>Short walks first, then longer ones</h2>
+
+    <p>The walk picture makes recall something you can <em>watch unfold</em>. Short walks carry mostly local structure; longer walks carry progressively more global relationships. Collecting walks only up to some length <span class="mono">m</span> gives a truncated propagator, and increasing <span class="mono">m</span> produces an explicit <strong>filtration</strong>: the memory is rebuilt step by step, in plain view.</p>
+
+    <div class="eq">
+      K<sup>(m)</sup>(t) = &Sigma;<sub>&#8467;=0</sub><sup>m</sup> (t<sup>&#8467;</sup>/&#8467;!) K<sup>&#8467;</sup>
+      <span class="small">keep walks up to length m; let m grow to recover the full propagator</span>
+    </div>
+
+    <p>This replaces the opaque descent of energy-based models with an inspectable reconstruction. You can stop at any walk length and see exactly how much of the image has come back, and where.</p>
+
+    <!-- INTERACTIVE 2: filtration -->
+    <div class="panel">
+      <h3>Interactive &middot; Reconstruction by walk length</h3>
+      <p class="cap">An occluded digit reconstructed as longer and longer walks are allowed in. Drag <em>max walk length</em>: short walks fix local texture near the visible cue; longer walks knit together the global shape until the digit snaps into focus.</p>
+      <canvas id="filtCanvas" height="240"></canvas>
+      <div class="controls">
+        <div class="ctl">
+          <label>Max walk length m <span class="val" id="mVal">1</span></label>
+          <input type="range" id="mLen" min="0" max="20" step="1" value="1">
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--wave-crest)"></span> recovered</span>
+        <span><span class="swatch" style="background:var(--wave-deep)"></span> still occluded</span>
+      </div>
+    </div>
+  </section>
+
+  <p class="pull">Because the dynamics amplify only the memory subspace and leave everything else stationary, there is nowhere for recall to settle that isn't a real memory.</p>
+
+  <!-- ===================== SECTION 4 ===================== -->
+  <section>
+    <h2><span class="sec-num">04 / The construction</span>Memories as degenerate eigenmodes</h2>
+
+    <p>How do you make the right walks reinforce? You choose <span class="mono">K</span> carefully. Each binary image is mapped to a phasor pattern; the patterns are stacked into a memory matrix and orthogonalized by a QR decomposition. The resulting directions are promoted to <strong>degenerate eigenmodes</strong> of <span class="mono">K</span>, all sharing a single eigenvalue, while every orthogonal direction carries none.</p>
+
+    <div class="eq">
+      K = Q ( &epsilon; e<sup>&minus;i&phi;</sup> I ) Q*
+      <span class="small">stored patterns become eigenvectors sharing one eigenvalue</span>
+    </div>
+
+    <p>The consequence is clean. In-subspace walks grow with time while orthogonal contributions stay bounded and stationary. <strong>Spurious states are excluded by construction</strong>, not discouraged by tuning an energy surface, and retention is set by the spectrum of <span class="mono">K</span> rather than by an energy basin.</p>
+  </section>
+
+  <!-- ===================== SECTION 5 ===================== -->
+  <section>
+    <h2><span class="sec-num">05 / The payoff</span>Heavy occlusion, no spurious collapse</h2>
+
+    <p>The results follow the picture. The network reconstructs MNIST digits at up to about <strong>90% occlusion</strong> while staying near-perfect, where a Modern Hopfield Network (MHN) holds only to roughly 65%. It also generalizes to digits it never stored, consistently beating the MHN, and sustains accuracy as the number of stored memories grows.</p>
+
+    <div class="keycard">
+      <div class="n">&#10003;</div>
+      <p class="t"><strong>Robust.</strong> Phase, not magnitude, carries the signal, so recall survives heavy occlusion.</p>
+      <div class="n">&#10003;</div>
+      <p class="t"><strong>Clean.</strong> No attractors live outside the stored patterns, so ambiguous inputs don't fall into spurious junk.</p>
+      <div class="n">&#10003;</div>
+      <p class="t"><strong>Cheap.</strong> One linear operator plus a readout, matching the cost of a single attention step, no iterative unrolling.</p>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 6: SPURIOUS STATES ===================== -->
+  <section>
+    <h2><span class="sec-num">06 / The clean break</span>Why spurious states can't form</h2>
+
+    <p>A <span class="term">spurious state</span> is the classic failure of an energy-based memory: a final configuration that matches none of the stored patterns, a blended blob the network nonetheless settles into confidently. They appear because shaping an energy surface to hold many memories inevitably carves extra, unintended valleys between them. You can discourage these valleys, but in an energy model you can never quite be rid of them.</p>
+
+    <p>This network rules them out by <em>construction</em> rather than by tuning. Recall only ever amplifies directions inside the stored-memory subspace; everything orthogonal to it stays perfectly still. There is simply <strong>nowhere to settle that isn't a real memory</strong>, because no attractor exists outside the span of the stored patterns.</p>
+
+    <blockquote>Spurious states aren't suppressed by a better-shaped landscape. The dynamics have nowhere else to go.</blockquote>
+
+    <p>The sharpest test is a deliberately ambiguous cue: blend a "7" and a "2" into a mixture <span class="mono">(1&minus;&alpha;)&middot;7 + &alpha;&middot;2</span> and ask each network to resolve it. The MHN frequently collapses into a spurious blob for intermediate blends. The complex-walk network instead snaps to whichever genuine memory the cue leans toward, transitioning cleanly across the boundary and failing only at the perfectly symmetric midpoint, where it simply declines to commit.</p>
+
+    <!-- INTERACTIVE 3: spurious states / ambiguity sweep -->
+    <div class="panel">
+      <h3>Interactive &middot; Ambiguous cue, two outcomes</h3>
+      <p class="cap">Sweep the blend &alpha; from a clean "7" (left) to a clean "2" (right). <strong>Top:</strong> the complex-walk network always lands on a real stored digit, switching cleanly at the midpoint. <strong>Bottom:</strong> the energy-based MHN falls into a spurious blob through the ambiguous middle band. Watch where each one commits, and where one of them doesn't.</p>
+      <canvas id="spurCanvas" height="300"></canvas>
+      <div class="controls">
+        <div class="ctl">
+          <label>Blend &alpha; <span class="val" id="alphaVal">0.50</span></label>
+          <input type="range" id="alpha" min="0" max="1" step="0.01" value="0.5">
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--wave-crest)"></span> resolved memory</span>
+        <span><span class="swatch" style="background:var(--signal)"></span> spurious state</span>
+        <span><span class="swatch" style="background:var(--mut)"></span> non-convergent</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 7 ===================== -->
+  <section>
+    <h2><span class="sec-num">07 / Why it matters</span>Memory that maps onto hardware</h2>
+
+    <p>Beyond interpretability, the model is the kind of phase-based, linear computation that <strong>oscillator, photonic and analog hardware</strong> implement most naturally, suggesting a route to building these memories physically. The same eigenmode construction also extends past images: assign different eigenvalues to different memories and you can encode salience or recency directly into the spectrum.</p>
+
+    <p>And the marginal case at the exact "7"/"2" midpoint, where the network refuses to commit, echoes how perception wobbles at a category boundary, hinting at a tractable model of perceptual ambiguity.</p>
+  </section>
+
+  <!-- ===================== TAKEAWAYS ===================== -->
+  <section>
+    <h2><span class="sec-num">08 / In a sentence</span>The takeaways</h2>
+    <div class="keycard">
+      <div class="n">&#9655;</div>
+      <p class="t">An associative memory built from complex oscillators has an <strong>exact closed-form recall</strong>: x(t) = e<sup>Kt</sup>x(0).</p>
+      <div class="n">&#9655;</div>
+      <p class="t">Recall is a <strong>sum of complex walks</strong> that interfere; coherent walks rebuild a memory, conflicting ones cancel.</p>
+      <div class="n">&#9655;</div>
+      <p class="t">Ordering walks by length gives an inspectable <strong>filtration</strong>, replacing the opaque downhill slide of energy-based models.</p>
+      <div class="n">&#9655;</div>
+      <p class="t">Storing memories as degenerate eigenmodes <strong>rules out spurious states by construction</strong>, survives ~90% occlusion, and maps naturally onto analog hardware.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p class="authors">"Complex walks over complex-valued neural networks solve image completion and memory association."</p>
+    <p>A.&nbsp;N.&nbsp;Shikder, L.&nbsp;H.&nbsp;B.&nbsp;Liboni, J.&nbsp;Min&aacute;&#269;, R.&nbsp;C.&nbsp;Budzinski &amp; L.&nbsp;E.&nbsp;Muller. Western University, King's University College, the Fields Institute &amp; University of Lethbridge.</p>
+    <p style="margin-top:14px">This is an informal explainer of the paper, not a substitute for it. Figures and numbers are paraphrased from the authors' work; the interactive demos are illustrative recreations of the concepts, not the trained model itself.</p>
+  </div>
+</footer>
+</main>
+
+<script>
+"use strict";
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function phaseColor(p){
+  const t = (p + Math.PI) / (2*Math.PI);
+  const stops = [
+    [29,59,92],
+    [63,115,166],
+    [205,191,154],
+    [63,115,166],
+    [29,59,92]
+  ];
+  const seg = t*(stops.length-1);
+  const i = Math.floor(seg), f = seg-i;
+  const a = stops[i], b = stops[Math.min(i+1,stops.length-1)];
+  const r = Math.round(a[0]+(b[0]-a[0])*f);
+  const g = Math.round(a[1]+(b[1]-a[1])*f);
+  const bl= Math.round(a[2]+(b[2]-a[2])*f);
+  return `rgb(${r},${g},${bl})`;
+}
+
+function fitCanvas(c, cssH){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const w = c.clientWidth;
+  c.width = w*dpr; c.height = cssH*dpr;
+  c.style.height = cssH+'px';
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx, w, h:cssH};
+}
+
+const prog = document.getElementById('prog');
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  const sc = h.scrollTop/(h.scrollHeight-h.clientHeight);
+  prog.style.width = (sc*100)+'%';
+}, {passive:true});
+
+/* ===== HERO: walks fanning out across nodes ===== */
+(function(){
+  const c = document.getElementById('heroCanvas');
+  let dim = fitCanvas(c, c.clientHeight||360);
+  let ctx = dim.ctx;
+  window.addEventListener('resize', ()=>{ dim = fitCanvas(c, c.clientHeight||360); ctx=dim.ctx; build(); });
+  let nodes=[], t=0;
+  function build(){
+    nodes=[];
+    const W=dim.w,H=dim.h, N=46;
+    for(let i=0;i<N;i++){
+      nodes.push({x:Math.random()*W, y:Math.random()*H, ph:Math.random()*2*Math.PI});
+    }
+  }
+  build();
+  function frame(){
+    const W=dim.w,H=dim.h;
+    ctx.fillStyle='rgba(16,24,32,.18)'; ctx.fillRect(0,0,W,H);
+    // edges that pulse with phase coherence
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        const a=nodes[i], b=nodes[j];
+        const dx=a.x-b.x, dy=a.y-b.y; const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<W*0.16){
+          const ph = a.ph + b.ph + t*0.6;
+          const alpha = 0.10*(1-d/(W*0.16))*(0.5+0.5*Math.cos(ph));
+          ctx.strokeStyle = phaseColor(Math.atan2(Math.sin(ph),Math.cos(ph))).replace('rgb','rgba').replace(')',`,${alpha.toFixed(3)})`);
+          ctx.lineWidth=1;
+          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+        }
+      }
+    }
+    for(const n of nodes){
+      const p = Math.atan2(Math.sin(n.ph+t*0.6),Math.cos(n.ph+t*0.6));
+      ctx.fillStyle=phaseColor(p);
+      ctx.beginPath(); ctx.arc(n.x,n.y,3.2,0,2*Math.PI); ctx.fill();
+    }
+    if(!reduceMotion){ t+=0.03; requestAnimationFrame(frame); }
+  }
+  frame();
+})();
+
+/* ===== INTERACTIVE 1: phasor interference ===== */
+(function(){
+  const c=document.getElementById('phasorCanvas');
+  let dim=fitCanvas(c,280); let ctx=dim.ctx;
+  window.addEventListener('resize',()=>{dim=fitCanvas(c,280);ctx=dim.ctx;draw();});
+  const sEl=document.getElementById('spread'), sV=document.getElementById('spreadVal');
+  const nEl=document.getElementById('nw'), nV=document.getElementById('nwVal');
+  // fixed pseudo-random offsets so the figure is stable
+  const offs=[]; let seed=7;
+  function rnd(){ seed=(seed*9301+49297)%233280; return seed/233280; }
+  for(let i=0;i<60;i++) offs.push((rnd()-0.5)*2);
+  function draw(){
+    const W=dim.w,H=dim.h; ctx.clearRect(0,0,W,H);
+    const spread=(+sEl.value)*Math.PI; const N=+nEl.value;
+    sV.textContent=(+sEl.value).toFixed(2)+'\u03c0';
+    nV.textContent=N;
+    const cx=W/2, cy=H/2, scale=Math.min(W,H)*0.30/Math.max(1,Math.sqrt(N)*0.5);
+    // accumulate from center, tip to tail
+    let px=cx, py=cy, rx=0, ry=0;
+    for(let i=0;i<N;i++){
+      const ang = -Math.PI/2 + offs[i]*spread;
+      const ex = px + Math.cos(ang)*scale;
+      const ey = py + Math.sin(ang)*scale;
+      ctx.strokeStyle='rgba(63,115,166,.8)'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(ex,ey); ctx.stroke();
+      px=ex; py=ey;
+      rx+=Math.cos(ang)*scale; ry+=Math.sin(ang)*scale;
+    }
+    // resultant
+    ctx.strokeStyle='#c8552b'; ctx.lineWidth=3.2;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+rx,cy+ry); ctx.stroke();
+    // arrowhead
+    const ah=Math.atan2(ry,rx);
+    ctx.beginPath();
+    ctx.moveTo(cx+rx,cy+ry);
+    ctx.lineTo(cx+rx-10*Math.cos(ah-0.4),cy+ry-10*Math.sin(ah-0.4));
+    ctx.lineTo(cx+rx-10*Math.cos(ah+0.4),cy+ry-10*Math.sin(ah+0.4));
+    ctx.closePath(); ctx.fillStyle='#c8552b'; ctx.fill();
+    const mag=Math.sqrt(rx*rx+ry*ry);
+    const maxMag=N*scale;
+    ctx.fillStyle='rgba(243,239,230,.7)'; ctx.font='12px ui-monospace,monospace'; ctx.textAlign='center';
+    ctx.fillText('resultant strength: '+(100*mag/maxMag).toFixed(0)+'%', W/2, H-12);
+  }
+  draw();
+  [sEl,nEl].forEach(e=>e.addEventListener('input',draw));
+})();
+
+/* ===== INTERACTIVE 2: reconstruction filtration ===== */
+(function(){
+  const c=document.getElementById('filtCanvas');
+  let dim=fitCanvas(c,240); let ctx=dim.ctx;
+  window.addEventListener('resize',()=>{dim=fitCanvas(c,240);ctx=dim.ctx;draw();});
+  const mEl=document.getElementById('mLen'), mV=document.getElementById('mVal');
+  // a crude 12x12 "7" bitmap
+  const G=12;
+  const digit=[
+    "111111111110",
+    "111111111110",
+    "000000001110",
+    "000000011100",
+    "000000111000",
+    "000001110000",
+    "000011100000",
+    "000011000000",
+    "000110000000",
+    "000110000000",
+    "001100000000",
+    "001100000000"
+  ];
+  function draw(){
+    const W=dim.w,H=dim.h; ctx.clearRect(0,0,W,H);
+    const m=+mEl.value; mV.textContent=m;
+    const cell=Math.min(W,H)*0.92/G;
+    const ox=(W-cell*G)/2, oy=(H-cell*G)/2;
+    // visible fraction grows with m: cue is bottom rows, walks climb upward
+    const reach = m/20; // 0..1
+    for(let r=0;r<G;r++){
+      for(let q=0;q<G;q++){
+        const on = digit[r][q]==='1';
+        // "distance from visible cue" - assume bottom half visible initially
+        const dist = Math.max(0,(G-1-r))/(G-1); // 0 at bottom, 1 at top
+        const recovered = on && (1-dist) <= reach+0.001 || (on && dist<=0.4); // bottom always visible
+        let col;
+        if(!on){ col='rgba(16,24,32,.85)'; }
+        else if(recovered){ col='#cdbf9a'; }
+        else { col='#1d3b5c'; }
+        ctx.fillStyle=col;
+        ctx.fillRect(ox+q*cell+1, oy+r*cell+1, cell-2, cell-2);
+      }
+    }
+    ctx.fillStyle='rgba(243,239,230,.6)'; ctx.font='12px ui-monospace,monospace'; ctx.textAlign='left';
+    ctx.fillText(m===0?'cue only':'walks \u2264 '+m, ox, oy-6);
+  }
+  draw();
+  mEl.addEventListener('input',draw);
+})();
+
+/* ===== INTERACTIVE 3: spurious states / ambiguity sweep ===== */
+(function(){
+  const c=document.getElementById('spurCanvas');
+  let dim=fitCanvas(c,300); let ctx=dim.ctx;
+  window.addEventListener('resize',()=>{dim=fitCanvas(c,300);ctx=dim.ctx;draw();});
+  const aEl=document.getElementById('alpha'), aV=document.getElementById('alphaVal');
+  const G=12;
+  // 12x12 bitmaps
+  const SEVEN=[
+    "111111111110","111111111110","000000001110","000000011100",
+    "000000111000","000001110000","000011100000","000011000000",
+    "000110000000","000110000000","001100000000","001100000000"];
+  const TWO=[
+    "011111111000","111000011100","000000001100","000000011100",
+    "000000111000","000001110000","000011100000","000111000000",
+    "001110000000","011100000000","111111111110","111111111110"];
+  // spurious: an irregular, lopsided smear that is clearly neither digit nor a clean 0
+  const BLOB=[
+    "000000000000","000110000000","001111100110","011111111110",
+    "011011111100","111001111000","110000111100","011000011110",
+    "001110001100","000111100000","000011000000","000000000000"];
+
+  function drawGrid(rows, ox, oy, cell, mode){
+    for(let r=0;r<G;r++){
+      for(let q=0;q<G;q++){
+        const on = rows[r][q]==='1';
+        let col;
+        if(mode==='spurious'){ col = on ? '#c8552b' : 'rgba(16,24,32,.85)'; }
+        else if(mode==='nonconv'){ col = on ? 'rgba(93,102,112,.9)' : 'rgba(16,24,32,.85)'; }
+        else { col = on ? '#cdbf9a' : 'rgba(16,24,32,.85)'; } // resolved
+        ctx.fillStyle=col;
+        ctx.fillRect(ox+q*cell+1, oy+r*cell+1, cell-2, cell-2);
+      }
+    }
+  }
+
+  function draw(){
+    const W=dim.w,H=dim.h; ctx.clearRect(0,0,W,H);
+    const a=+aEl.value; aV.textContent=a.toFixed(2);
+
+    const cell=Math.min(W*0.42, H*0.42)/G;
+    const gw=cell*G;
+    const xc=(W-gw)/2;
+    const yTop=24, yBot=H/2+18;
+
+    // labels
+    ctx.fillStyle='rgba(243,239,230,.8)'; ctx.font='11px ui-monospace,monospace';
+    ctx.textAlign='left';
+    ctx.fillText('cv-NN', xc, yTop-8);
+    ctx.fillText('MHN', xc, yBot-8);
+
+    // --- cv-NN: always a real memory, clean switch at 0.5, non-convergent exactly at 0.5
+    let cvMode, cvRows;
+    if(Math.abs(a-0.5)<0.02){ cvMode='nonconv'; cvRows=(a<0.5?SEVEN:TWO); }
+    else if(a<0.5){ cvMode='resolved'; cvRows=SEVEN; }
+    else { cvMode='resolved'; cvRows=TWO; }
+    drawGrid(cvRows, xc, yTop, cell, cvMode);
+
+    // --- MHN: spurious through the ambiguous middle band, clean only near the ends
+    let mhMode, mhRows;
+    if(a<0.22){ mhMode='resolved'; mhRows=SEVEN; }
+    else if(a>0.78){ mhMode='resolved'; mhRows=TWO; }
+    else { mhMode='spurious'; mhRows=BLOB; }
+    drawGrid(mhRows, xc, yBot, cell, mhMode);
+
+    // verdict text to the right of each grid
+    ctx.font='12px ui-monospace,monospace'; ctx.textAlign='left';
+    const tx=xc+gw+16;
+    ctx.fillStyle = cvMode==='nonconv' ? 'rgba(93,102,112,.95)' : '#cdbf9a';
+    ctx.fillText(cvMode==='nonconv' ? "won't commit" : (cvRows===SEVEN?'\u2192 recalls 7':'\u2192 recalls 2'), tx, yTop+gw/2);
+    ctx.fillStyle = mhMode==='spurious' ? '#c8552b' : '#cdbf9a';
+    ctx.fillText(mhMode==='spurious' ? 'spurious blob' : (mhRows===SEVEN?'\u2192 recalls 7':'\u2192 recalls 2'), tx, yBot+gw/2);
+
+    // alpha track at the very bottom
+    const by=H-12, bx0=xc, bx1=xc+gw;
+    ctx.strokeStyle='rgba(243,239,230,.3)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(bx0,by); ctx.lineTo(bx1,by); ctx.stroke();
+    const px=bx0+a*(bx1-bx0);
+    ctx.fillStyle='#e0a23c'; ctx.beginPath(); ctx.arc(px,by,4,0,2*Math.PI); ctx.fill();
+    ctx.fillStyle='rgba(243,239,230,.55)'; ctx.font='10px ui-monospace,monospace';
+    ctx.textAlign='left'; ctx.fillText('7', bx0-2, by-8);
+    ctx.textAlign='right'; ctx.fillText('2', bx1+2, by-8);
+  }
+  draw();
+  aEl.addEventListener('input',draw);
+})();
+</script>
+</body>
+</html>

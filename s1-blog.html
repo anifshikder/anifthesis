@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The sequence model you can solve on paper</title>
+<style>
+  :root{
+    --ink:#101820;
+    --paper:#f3efe6;
+    --paper-2:#e9e3d6;
+    --wave-deep:#1d3b5c;
+    --wave-mid:#3f73a6;
+    --wave-crest:#cdbf9a;
+    --signal:#c8552b;
+    --signal-2:#e0a23c;
+    --line:rgba(16,24,32,.14);
+    --line-strong:rgba(16,24,32,.3);
+    --mut:#5d6670;
+    --maxw:760px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    font-size:19px;line-height:1.65;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+  .mono{font-family:"SF Mono",ui-monospace,"Cascadia Code",Menlo,Consolas,monospace}
+
+  header.hero{
+    position:relative;overflow:hidden;
+    background:var(--ink);color:var(--paper);
+    border-bottom:1px solid #000;
+  }
+  #heroCanvas{display:block;width:100%;height:46vh;min-height:300px;max-height:440px}
+  .hero-text{
+    position:absolute;left:0;right:0;bottom:0;padding:26px 22px 30px;
+    background:linear-gradient(to top,rgba(16,24,32,.92),rgba(16,24,32,.0));
+  }
+  .hero-text .inner{max-width:var(--maxw);margin:0 auto}
+  .eyebrow{
+    font-family:"SF Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--signal-2);margin:0 0 10px;font-weight:600;
+  }
+  h1{
+    font-size:clamp(31px,6.4vw,56px);line-height:1.02;margin:0;font-weight:600;
+    letter-spacing:-.01em;text-wrap:balance;
+  }
+  h1 em{font-style:italic;color:var(--wave-crest)}
+  .deck{margin:14px 0 0;font-size:18px;color:rgba(243,239,230,.82);max-width:560px}
+
+  main{padding:54px 0 80px}
+  section{margin:0 0 8px}
+  .lede{font-size:23px;line-height:1.5}
+  p{margin:0 0 22px}
+  h2{
+    font-size:clamp(25px,4vw,33px);line-height:1.1;margin:62px 0 6px;font-weight:600;
+    letter-spacing:-.01em;text-wrap:balance;
+  }
+  .sec-num{
+    display:block;font-family:"SF Mono",ui-monospace,monospace;font-size:12px;
+    letter-spacing:.2em;color:var(--signal);margin-bottom:14px;font-weight:600;
+  }
+  a{color:var(--signal);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px}
+  strong{font-weight:600}
+  .term{border-bottom:2px solid var(--signal-2);padding-bottom:1px}
+
+  blockquote{
+    margin:30px 0;padding:4px 0 4px 22px;border-left:3px solid var(--signal);
+    font-size:21px;line-height:1.45;font-style:italic;color:#22303c;
+  }
+
+  .eq{
+    display:block;margin:24px auto;padding:16px 18px;background:var(--ink);color:var(--paper);
+    border-radius:8px;font-family:"SF Mono",ui-monospace,monospace;font-size:15px;
+    text-align:center;overflow-x:auto;letter-spacing:.01em;
+  }
+  .eq .small{color:var(--wave-crest);font-size:12px;display:block;margin-top:8px;letter-spacing:.04em}
+
+  .panel{
+    margin:34px 0;padding:22px;background:#fff;border:1px solid var(--line);
+    border-radius:12px;box-shadow:0 1px 0 rgba(16,24,32,.04),0 14px 30px -22px rgba(16,24,32,.5);
+  }
+  .panel h3{
+    margin:0 0 4px;font-size:14px;font-family:"SF Mono",ui-monospace,monospace;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--mut);font-weight:600;
+  }
+  .panel .cap{font-size:15px;color:var(--mut);line-height:1.45;margin:0 0 16px}
+  .panel canvas{display:block;width:100%;border-radius:6px;background:var(--ink)}
+  .controls{display:flex;flex-wrap:wrap;gap:18px 26px;align-items:center;margin-top:16px}
+  .ctl{display:flex;flex-direction:column;gap:5px;min-width:130px;flex:1}
+  .ctl label{font-size:12px;font-family:"SF Mono",ui-monospace,monospace;letter-spacing:.06em;color:var(--mut);text-transform:uppercase}
+  .ctl .val{color:var(--signal);font-weight:700}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+    background:var(--paper-2);outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+    background:var(--signal);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:16px;height:16px;border-radius:50%;background:var(--signal);
+    border:3px solid #fff;cursor:pointer;
+  }
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  button.tap{
+    font-family:"SF Mono",ui-monospace,monospace;font-size:13px;letter-spacing:.04em;
+    padding:9px 16px;border-radius:7px;border:1px solid var(--ink);background:var(--ink);
+    color:var(--paper);cursor:pointer;transition:transform .08s,background .15s;font-weight:600;
+  }
+  button.tap:hover{background:#2a3947}
+  button.tap:active{transform:translateY(1px)}
+  button.tap.ghost{background:transparent;color:var(--ink)}
+  button.tap.ghost:hover{background:var(--paper-2)}
+  button.tap.on{background:var(--signal);border-color:var(--signal)}
+
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--mut);margin-top:14px;align-items:center}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:14px;height:14px;border-radius:3px;display:inline-block}
+
+  figure{margin:30px 0}
+  figcaption{font-size:14px;color:var(--mut);line-height:1.5;margin-top:10px;font-family:"SF Mono",ui-monospace,monospace;letter-spacing:.01em}
+
+  .pull{
+    font-size:clamp(22px,3.6vw,30px);line-height:1.25;font-weight:600;letter-spacing:-.01em;
+    margin:56px 0;color:var(--wave-deep);text-wrap:balance;
+  }
+
+  .keycard{
+    display:grid;grid-template-columns:auto 1fr;gap:4px 18px;margin:30px 0;
+    padding:22px;border:1px solid var(--line);border-radius:12px;background:var(--paper-2);
+  }
+  .keycard .n{font-family:"SF Mono",ui-monospace,monospace;color:var(--signal);font-weight:700;font-size:15px}
+  .keycard .t{margin:0 0 14px}
+  .keycard .t:last-child{margin-bottom:0}
+
+  footer{
+    border-top:1px solid var(--line-strong);margin-top:60px;padding:34px 0 70px;
+    font-size:14px;color:var(--mut);
+  }
+  footer .authors{color:var(--ink);margin-bottom:6px}
+  footer a{color:var(--mut)}
+
+  .progress{position:fixed;top:0;left:0;height:3px;background:var(--signal);width:0;z-index:50}
+
+  .backlink{display:inline-flex;align-items:center;gap:8px;margin:0 0 30px;
+    font-family:"SF Mono",ui-monospace,monospace;font-size:13px;letter-spacing:.04em;color:var(--mut)}
+  .backlink:hover{color:var(--signal)}
+
+  @media (max-width:640px){
+    body{font-size:18px}
+    .controls{gap:14px 18px}
+    .ctl{min-width:46%}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="prog"></div>
+
+<header class="hero">
+  <canvas id="heroCanvas"></canvas>
+  <div class="hero-text">
+    <div class="inner">
+      <p class="eyebrow">Interpretability &middot; State space models</p>
+      <h1>The sequence model you can <em>solve on paper</em></h1>
+      <p class="deck">Most AI sequence models can only be explained after the fact. A new architecture called S&sup1; can be written down from input to output as a single exact equation, with no guesswork.</p>
+    </div>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <a class="backlink" href="blog.html">&larr; All writing</a>
+
+  <p class="lede">When a model decides that an EEG trace belongs to one mental state or that a handwritten digit is a 7, we would like to know <em>why</em>. For most modern sequence models, the honest answer is that we don't, not exactly.</p>
+
+  <p>The usual tools, attention maps and gradient attributions, tell us which parts of the input mattered, but not how the model's internal machinery turned that input into that answer. A paper by Dey, Shikder, and colleagues at Western University and the Fields Institute takes a sharper route: they design an architecture, <span class="mono">S&sup1;</span>, whose <em>entire</em> computation, dynamics and readout together, can be written as one closed-form equation derived from first principles.</p>
+
+  <p>The trick is to start not from a neural network, but from a network of <span class="term">coupled oscillators</span> whose physics happens to be exactly solvable.</p>
+
+  <!-- ===================== SECTION 1 ===================== -->
+  <section>
+    <h2><span class="sec-num">01 / The bottleneck</span>Why SSMs are <em>almost</em> transparent</h2>
+
+    <p>State space models (SSMs) like S4 and Mamba have become a strong alternative to Transformers. Internally they have two parts: a <strong>linear recurrence</strong> that absorbs the input sequence and a <strong>nonlinear readout</strong> that converts the internal state into a prediction.</p>
+
+    <p>The linear half is wonderfully tractable. You can find its natural modes and write down its response to any input exactly. The trouble is the second half. SSMs need that nonlinear readout to perform well, but the nonlinearity severs the clean connection between the model's internal modes and its output. Once it's applied, end-to-end analysis falls apart.</p>
+
+    <p>So the challenge isn't to throw away the nonlinearity, the model can't work without it, but to find an architecture where the nonlinearity is <em>part of the math</em> rather than bolted on afterward.</p>
+  </section>
+
+  <!-- ===================== SECTION 2 ===================== -->
+  <section>
+    <h2><span class="sec-num">02 / The construction</span>A readout that derives itself</h2>
+
+    <p>Here's the central idea. S&sup1; is built from a system of complex oscillators on a ring. A specific <strong>change of coordinates</strong> turns the messy nonlinear oscillator dynamics into a simple linear system, the kind we can solve exactly with a matrix exponential.</p>
+
+    <p>The payoff is subtle but decisive: the <em>inverse</em> of that same coordinate change tells you precisely what the readout nonlinearity has to be. It turns out to be a clean operation, normalizing each node's state to unit length so only its <em>phase</em> survives:</p>
+
+    <div class="eq">
+      readout = y / |y| = e<sup>i&psi;</sup>
+      <span class="small">keep the phase &psi; of each oscillator, discard the magnitude</span>
+    </div>
+
+    <p>This is the part that sets S&sup1; apart. In other SSMs the nonlinearity is a heuristic choice, an off-the-shelf activation. Here it is <strong>uniquely determined</strong> by the model's own structure. It isn't appended; it falls out of the mathematics.</p>
+
+    <!-- INTERACTIVE 1: the ring -->
+    <div class="panel">
+      <h3>Interactive &middot; Traveling wave modes</h3>
+      <p class="cap">When the recurrent connections form a circulant ring, the natural modes are <strong>traveling waves</strong> of increasing spatial frequency. Each dot is a node; color is its phase. Drag <em>mode index</em> to climb from slow, smooth waves to fast, finely-wrinkled ones, and <em>speed</em> to set how fast each circles the ring.</p>
+      <canvas id="ringCanvas" height="300"></canvas>
+      <div class="controls">
+        <div class="ctl">
+          <label>Mode index &#8467; <span class="val" id="ringKVal">3</span></label>
+          <input type="range" id="ringK" min="0" max="12" step="1" value="3">
+        </div>
+        <div class="ctl">
+          <label>Speed <span class="val" id="ringSVal">1.0&times;</span></label>
+          <input type="range" id="ringS" min="0" max="2.5" step="0.1" value="1">
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:#1d3b5c"></span> phase &minus;&pi;</span>
+        <span><span class="swatch" style="background:#3f73a6"></span> 0</span>
+        <span><span class="swatch" style="background:#cdbf9a"></span> +&pi;</span>
+      </div>
+    </div>
+  </section>
+
+  <p class="pull">Fixing the connectivity to a ring means every mode is, forever, a traveling wave of a known spatial frequency, no matter how training reshapes the rest of the model.</p>
+
+  <!-- ===================== SECTION 3 ===================== -->
+  <section>
+    <h2><span class="sec-num">03 / Storing the input</span>Each mode is a tuned resonator</h2>
+
+    <p>Because the ring's modes are the discrete Fourier modes, each one evolves completely independently, like a separate radio channel. An incoming signal gets split across these channels, and each channel acts as a <strong>resonator</strong>: it has a natural frequency and a decay rate, and it responds strongly only to inputs that match its tuning.</p>
+
+    <p>The authors show this directly on real data. On a slow-cortical-potential EEG task, the model's energy piles into the lowest-frequency modes, matching the slow nature of those brain signals, with the two classes differing in <em>how strongly</em> they drive those modes. On sequential MNIST, a digit 7 lights up middle modes while a digit 1, with its simple vertical stroke, stays in the lowest ones.</p>
+
+    <!-- INTERACTIVE 2: phase field -->
+    <div class="panel">
+      <h3>Interactive &middot; The phase field</h3>
+      <p class="cap">After the readout strips away magnitude, what remains is each node's <em>phase</em>, plotted here across nodes (vertical) and time (horizontal), exactly the y/|y| = e<sup>i&psi;</sup> fields the paper shows for EEG and MNIST. Dial up <em>excited modes</em> to add higher-frequency waves, and shift the <em>class</em> to see how a different input lights up a different mix, producing a visibly different phase texture.</p>
+      <canvas id="phaseCanvas" height="240"></canvas>
+      <div class="controls">
+        <div class="ctl">
+          <label>Excited modes <span class="val" id="pfModesVal">3</span></label>
+          <input type="range" id="pfModes" min="1" max="10" step="1" value="3">
+        </div>
+        <div class="ctl">
+          <label>Class <span class="val" id="pfClassVal">0</span></label>
+          <input type="range" id="pfClass" min="0" max="1" step="1" value="0">
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:#1d3b5c"></span> phase &minus;&pi;</span>
+        <span><span class="swatch" style="background:#3f73a6"></span> 0</span>
+        <span><span class="swatch" style="background:#cdbf9a"></span> +&pi;</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 4 ===================== -->
+  <section>
+    <h2><span class="sec-num">04 / The hard part</span>The nonlinearity <em>is</em> the wave interaction</h2>
+
+    <p>Here is where S&sup1; turns the usual problem inside out. In a standard SSM the nonlinearity is opaque. In S&sup1;, the phase-normalization readout has a precise spectral meaning: its denominator couples <em>every mode to every other mode</em> through their interference.</p>
+
+    <p>Concretely, the readout's magnitude term sums products of pairs of modes, each pair carrying a phase difference. When two modes are aligned they reinforce; when opposed they cancel, even if neither changed its energy. The nonlinearity, in other words, isn't an external activation at all: it is the mechanism by which the model reaches the <strong>phase dynamics</strong> of the original oscillator system.</p>
+
+    <div class="keycard">
+      <div class="n">step 1</div>
+      <p class="t"><strong>Modal decomposition.</strong> The state is a superposition of traveling waves, each with its own amplitude that accumulates the input history through a frequency-tuned filter.</p>
+      <div class="n">step 2</div>
+      <p class="t"><strong>Inter-modal interference.</strong> Normalizing by magnitude couples the modes in pairs. Aligned phases add; opposed phases cancel. This is where the nonlinear work happens.</p>
+      <div class="n">step 3</div>
+      <p class="t"><strong>Linear readout.</strong> A learned matrix weights each node by its phase coherence and preferred direction to produce the class scores.</p>
+    </div>
+
+    <!-- INTERACTIVE 3: resultant phasor -->
+    <div class="panel">
+      <h3>Interactive &middot; What the readout sees</h3>
+      <p class="cap">Each node's phase over time is a cloud of unit arrows on the circle. Averaging them gives one <strong>resultant phasor</strong> r<sub>n</sub>e<sup>i&phi;<sub>n</sub></sup>, the single number per node that W reads out. Slide <em>coherence</em>: when a node's phases stay aligned the resultant is long and confident; when they scatter it shrinks toward zero. Slide <em>preferred direction</em> to rotate where it points. Classes separate by either the <em>length</em> (EEG) or the <em>direction</em> (MNIST) of these arrows.</p>
+      <canvas id="resultantCanvas" height="280"></canvas>
+      <div class="controls">
+        <div class="ctl">
+          <label>Coherence <span class="val" id="cohVal">0.55</span></label>
+          <input type="range" id="coh" min="0" max="1" step="0.01" value="0.55">
+        </div>
+        <div class="ctl">
+          <label>Preferred direction <span class="val" id="dirVal">40&deg;</span></label>
+          <input type="range" id="dir" min="0" max="360" step="5" value="40">
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--wave-mid)"></span> per-timestep phasors</span>
+        <span><span class="swatch" style="background:var(--signal)"></span> resultant r<sub>n</sub>e<sup>i&phi;<sub>n</sub></sup></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 5 ===================== -->
+  <section>
+    <h2><span class="sec-num">05 / The payoff</span>One operator for the whole forward pass</h2>
+
+    <p>Stitching the pieces together, the paper writes a single closed-form operator that maps an input sequence to its class scores, with the modal decomposition, the inter-modal interference, and the readout all included explicitly:</p>
+
+    <div class="eq">
+      O<sub>c</sub> = &Sigma;<sub>n</sub> W<sub>cn</sub> r<sub>n</sub> e<sup>i&phi;<sub>n</sub></sup>
+      <span class="small">read out each node's phase coherence r<sub>n</sub> and mean direction &phi;<sub>n</sub></span>
+    </div>
+
+    <p>Reading this is the thing post-hoc methods can never give you: not a measurement of a trained model, but a <strong>derivation</strong> of it. You can trace, in closed form, how any input flows through identifiable wave modes to the final decision. The classification is no longer something you probe; it's something you can write down.</p>
+
+    <blockquote>Every stage of the computation admits a closed-form account, with no post-hoc attribution required.</blockquote>
+
+    <p>The same transparency carries respectable numbers. On the UEA multivariate time-series benchmarks S&sup1; sits in the same range as S5, Mamba and LRU, and it reaches 97% on sequential MNIST with a single layer. Full mathematical explainability, the authors argue, does not have to cost performance.</p>
+  </section>
+
+  <!-- ===================== SECTION 6 ===================== -->
+  <section>
+    <h2><span class="sec-num">06 / Steering</span>Flipping a decision on purpose</h2>
+
+    <p>Because the operator is exact, it lets the authors ask a causal question: do specific wave modes actually drive a decision? They freeze the readout and intervene directly on a handful of identifiable modes, amplifying, retuning, or re-driving them partway through a sequence.</p>
+
+    <p>The result is striking. On the EEG task, nudging just <strong>five modes</strong> by tiny amounts is enough to flip every sample from class 0 to class 1, a genuine change in the winning class rather than a cosmetic margin shift. Since the readout never moved, the flip is causally attributable to those modes alone, a finite, mechanistic recipe for redirecting the model.</p>
+
+    <!-- INTERACTIVE 4: steering -->
+    <div class="panel">
+      <h3>Interactive &middot; Steer the decision</h3>
+      <p class="cap">The running margin between class&nbsp;1 and class&nbsp;0 over a sequence. The baseline (dashed) settles into class&nbsp;0, below the line. Pick a <em>switch point</em>, then add a small <em>mode gain</em>: at the switch the trajectory bends, and a tiny push is enough to carry the margin across zero into class&nbsp;1, the arg-max flip from the paper, with the readout untouched.</p>
+      <canvas id="steerCanvas" height="250"></canvas>
+      <div class="controls">
+        <div class="ctl">
+          <label>Switch point k&#8902; <span class="val" id="swVal">180</span></label>
+          <input type="range" id="sw" min="60" max="500" step="10" value="180">
+        </div>
+        <div class="ctl">
+          <label>Mode gain <span class="val" id="gainVal">0.0</span></label>
+          <input type="range" id="gain" min="0" max="1" step="0.02" value="0">
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--wave-mid)"></span> baseline (&rarr; class 0)</span>
+        <span><span class="swatch" style="background:var(--signal)"></span> steered</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAKEAWAYS ===================== -->
+  <section>
+    <h2><span class="sec-num">07 / In a sentence</span>The takeaways</h2>
+    <div class="keycard">
+      <div class="n">&#9655;</div>
+      <p class="t"><span class="mono">S&sup1;</span> is built from an exactly solvable ring of complex oscillators, so its dynamics <em>and</em> its readout can be written down in closed form.</p>
+      <div class="n">&#9655;</div>
+      <p class="t">Its nonlinearity isn't chosen, it's <strong>derived</strong>: the inverse coordinate change uniquely fixes it as phase normalization.</p>
+      <div class="n">&#9655;</div>
+      <p class="t">The forward pass becomes one operator built from traveling-wave modes interacting <strong>by phase</strong>, turning interpretability from observation into derivation.</p>
+      <div class="n">&#9655;</div>
+      <p class="t">The same math enables <strong>control</strong>: tiny pushes on a few modes can flip a classification on purpose, with full transparency, all while staying competitive on benchmarks.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p class="authors">"S&sup1;: A Precisely Interpretable State Space Model via an End-to-End Closed-Form Operator."</p>
+    <p>R.&nbsp;Dey, A.&nbsp;N.&nbsp;Shikder, S.&nbsp;Auddy, A.&nbsp;Busch, R.&nbsp;C.&nbsp;Budzinski &amp; L.&nbsp;E.&nbsp;Muller. Western University, the Fields Institute &amp; University of Lethbridge. Code: <a href="https://anonymous.4open.science/r/S1-D9F3/">anonymous.4open.science/r/S1-D9F3</a>.</p>
+    <p style="margin-top:14px">This is an informal explainer of the paper, not a substitute for it. Figures and numbers are paraphrased from the authors' work; the interactive demos are illustrative recreations of the concepts, not the trained model itself.</p>
+  </div>
+</footer>
+</main>
+
+<script>
+"use strict";
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function phaseColor(p){
+  const t = (p + Math.PI) / (2*Math.PI);
+  const stops = [
+    [29,59,92],
+    [63,115,166],
+    [205,191,154],
+    [63,115,166],
+    [29,59,92]
+  ];
+  const seg = t*(stops.length-1);
+  const i = Math.floor(seg), f = seg-i;
+  const a = stops[i], b = stops[Math.min(i+1,stops.length-1)];
+  const r = Math.round(a[0]+(b[0]-a[0])*f);
+  const g = Math.round(a[1]+(b[1]-a[1])*f);
+  const bl= Math.round(a[2]+(b[2]-a[2])*f);
+  return `rgb(${r},${g},${bl})`;
+}
+
+function fitCanvas(c, cssH){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const w = c.clientWidth;
+  c.width = w*dpr; c.height = cssH*dpr;
+  c.style.height = cssH+'px';
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx, w, h:cssH};
+}
+
+const prog = document.getElementById('prog');
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  const sc = h.scrollTop/(h.scrollHeight-h.clientHeight);
+  prog.style.width = (sc*100)+'%';
+}, {passive:true});
+
+/* ===== HERO: stacked traveling wave field ===== */
+(function(){
+  const c = document.getElementById('heroCanvas');
+  let dim = fitCanvas(c, c.clientHeight||360);
+  const ctx = dim.ctx;
+  window.addEventListener('resize', ()=>{ dim = fitCanvas(c, c.clientHeight||360); });
+  let t=0;
+  function frame(){
+    const W=dim.w, H=dim.h;
+    ctx.clearRect(0,0,W,H);
+    const cols = 120;
+    const cw = W/cols, ch = H/40;
+    for(let yi=0; yi<40; yi++){
+      for(let xi=0; xi<cols; xi++){
+        const x = xi/cols;
+        const phase = Math.sin(2*Math.PI*(3*x) - t*0.9 + yi*0.12)
+                    + 0.6*Math.sin(2*Math.PI*(5*x) - t*1.4 + yi*0.05)
+                    + 0.4*Math.sin(2*Math.PI*(2*x) + t*0.5);
+        const p = Math.atan2(Math.sin(phase),Math.cos(phase));
+        ctx.fillStyle = phaseColor(p);
+        ctx.fillRect(xi*cw, yi*ch, cw+1, ch+1);
+      }
+    }
+    if(!reduceMotion){ t+=0.04; requestAnimationFrame(frame); }
+  }
+  frame();
+})();
+
+/* ===== INTERACTIVE 1: the ring ===== */
+(function(){
+  const c = document.getElementById('ringCanvas');
+  let dim = fitCanvas(c, 300); let ctx = dim.ctx;
+  window.addEventListener('resize', ()=>{ dim=fitCanvas(c,300); ctx=dim.ctx; });
+  const kEl=document.getElementById('ringK'), sEl=document.getElementById('ringS');
+  const kV=document.getElementById('ringKVal'), sV=document.getElementById('ringSVal');
+  const N=44; let t=0;
+  function frame(){
+    const W=dim.w,H=dim.h; ctx.clearRect(0,0,W,H);
+    const cx=W/2, cy=H/2, R=Math.min(W,H)*0.36;
+    const k=+kEl.value, sp=+sEl.value;
+    kV.textContent=k; sV.textContent=sp.toFixed(1)+'\u00d7';
+    ctx.strokeStyle='rgba(243,239,230,.12)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,2*Math.PI); ctx.stroke();
+    for(let i=0;i<N;i++){
+      const a = (i/N)*2*Math.PI - Math.PI/2;
+      const x = cx+Math.cos(a)*R, y=cy+Math.sin(a)*R;
+      const phase = k===0 ? Math.sin(t*sp) : Math.atan2(
+        Math.sin(2*Math.PI*k*(i/N) - t*sp),
+        Math.cos(2*Math.PI*k*(i/N) - t*sp));
+      const amp = 6 + 5*Math.cos(phase);
+      ctx.fillStyle=phaseColor(phase);
+      ctx.beginPath(); ctx.arc(x,y,amp,0,2*Math.PI); ctx.fill();
+    }
+    if(!reduceMotion){ t+=0.035; requestAnimationFrame(frame);} 
+  }
+  frame();
+  [kEl,sEl].forEach(e=>e.addEventListener('input',()=>{ if(reduceMotion) frame(); }));
+})();
+
+/* ===== INTERACTIVE 2: phase field y/|y| = e^{i psi} ===== */
+(function(){
+  const c=document.getElementById('phaseCanvas');
+  let dim=fitCanvas(c,240); let ctx=dim.ctx;
+  window.addEventListener('resize',()=>{dim=fitCanvas(c,240);ctx=dim.ctx;});
+  const mEl=document.getElementById('pfModes'), mV=document.getElementById('pfModesVal');
+  const clEl=document.getElementById('pfClass'), clV=document.getElementById('pfClassVal');
+  const NN=44;           // nodes (rows)
+  const COLS=150;        // timesteps (cols)
+  let t=0;
+  function frame(){
+    const W=dim.w,H=dim.h; ctx.clearRect(0,0,W,H);
+    const M=+mEl.value, cls=+clEl.value;
+    mV.textContent=M; clV.textContent=cls;
+    // class shifts the speeds/weights so the texture differs per class
+    const cw=W/COLS, ch=H/NN;
+    for(let r=0;r<NN;r++){
+      const node=r/NN;
+      for(let col=0;col<COLS;col++){
+        const kk=col/COLS; // "time" coordinate within the window
+        let ph=0;
+        for(let l=1;l<=M;l++){
+          // each excited mode: traveling wave of spatial freq l, own temporal freq
+          const w = (cls? 0.7 : 1.0)*l;          // class retunes frequencies
+          const amp = 1/l;                        // 1/f-like falloff
+          ph += amp*Math.sin(2*Math.PI*l*node - (w*kk*6) - t*0.5 + (cls?Math.PI/3:0));
+        }
+        const p=Math.atan2(Math.sin(ph),Math.cos(ph));
+        ctx.fillStyle=phaseColor(p);
+        ctx.fillRect(col*cw, r*ch, cw+1, ch+1);
+      }
+    }
+    // axis hints
+    ctx.fillStyle='rgba(243,239,230,.55)'; ctx.font='10px ui-monospace,monospace';
+    ctx.textAlign='left'; ctx.fillText('nodes \u2191', 6, 14);
+    ctx.textAlign='right'; ctx.fillText('time \u2192', W-6, H-6);
+    if(!reduceMotion){ t+=0.03; requestAnimationFrame(frame);} 
+  }
+  frame();
+  [mEl,clEl].forEach(e=>e.addEventListener('input',()=>{ if(reduceMotion) frame(); }));
+})();
+
+/* ===== INTERACTIVE 3: mean resultant phasor ===== */
+(function(){
+  const c=document.getElementById('resultantCanvas');
+  let dim=fitCanvas(c,280); let ctx=dim.ctx;
+  window.addEventListener('resize',()=>{dim=fitCanvas(c,280);ctx=dim.ctx;draw();});
+  const cohEl=document.getElementById('coh'), cohV=document.getElementById('cohVal');
+  const dirEl=document.getElementById('dir'), dirV=document.getElementById('dirVal');
+  const T=60;
+  // fixed jitter sequence so the picture is stable across redraws
+  const jit=[]; let seed=13;
+  function rnd(){ seed=(seed*9301+49297)%233280; return seed/233280; }
+  for(let i=0;i<T;i++) jit.push(rnd()-0.5);
+  function draw(){
+    const W=dim.w,H=dim.h; ctx.clearRect(0,0,W,H);
+    const coh=+cohEl.value, dir=(+dirEl.value)*Math.PI/180;
+    cohV.textContent=coh.toFixed(2);
+    dirV.textContent=(+dirEl.value)+'\u00b0';
+    const cx=W/2, cy=H/2, R=Math.min(W,H)*0.38;
+    // unit circle
+    ctx.strokeStyle='rgba(243,239,230,.22)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,2*Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx-R,cy); ctx.lineTo(cx+R,cy); ctx.moveTo(cx,cy-R); ctx.lineTo(cx,cy+R); ctx.stroke();
+    // spread shrinks as coherence grows
+    const spread=(1-coh)*Math.PI;
+    let sx=0, sy=0;
+    for(let i=0;i<T;i++){
+      const ang = dir + jit[i]*spread;
+      const ex=cx+Math.cos(ang)*R, ey=cy-Math.sin(ang)*R;
+      ctx.strokeStyle='rgba(63,115,166,.45)'; ctx.lineWidth=1.2;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(ex,ey); ctx.stroke();
+      sx+=Math.cos(ang); sy+=Math.sin(ang);
+    }
+    sx/=T; sy/=T;
+    const rx=cx+sx*R, ry=cy-sy*R;
+    const mag=Math.sqrt(sx*sx+sy*sy);
+    // resultant
+    ctx.strokeStyle='#c8552b'; ctx.lineWidth=3.4;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(rx,ry); ctx.stroke();
+    const ah=Math.atan2(ry-cy,rx-cx);
+    ctx.beginPath(); ctx.moveTo(rx,ry);
+    ctx.lineTo(rx-11*Math.cos(ah-0.4),ry-11*Math.sin(ah-0.4));
+    ctx.lineTo(rx-11*Math.cos(ah+0.4),ry-11*Math.sin(ah+0.4));
+    ctx.closePath(); ctx.fillStyle='#c8552b'; ctx.fill();
+    ctx.fillStyle='rgba(243,239,230,.75)'; ctx.font='12px ui-monospace,monospace'; ctx.textAlign='center';
+    ctx.fillText('r = '+mag.toFixed(2), W/2, H-12);
+  }
+  draw();
+  [cohEl,dirEl].forEach(e=>e.addEventListener('input',draw));
+})();
+
+/* ===== INTERACTIVE 4: modal steering / decision flip ===== */
+(function(){
+  const c=document.getElementById('steerCanvas');
+  let dim=fitCanvas(c,250); let ctx=dim.ctx;
+  window.addEventListener('resize',()=>{dim=fitCanvas(c,250);ctx=dim.ctx;draw();});
+  const swEl=document.getElementById('sw'), swV=document.getElementById('swVal');
+  const gEl=document.getElementById('gain'), gV=document.getElementById('gainVal');
+  const K=880;
+  function baseMargin(k){
+    // settles negative (class 0): dip then plateau below zero
+    const x=k/K;
+    return -5*(1-Math.exp(-x*4)) + 1.2*Math.sin(x*6);
+  }
+  function draw(){
+    const W=dim.w,H=dim.h; ctx.clearRect(0,0,W,H);
+    const kstar=+swEl.value, gain=+gEl.value;
+    swV.textContent=kstar; gV.textContent=gain.toFixed(1);
+    const padL=40, padR=14, padT=16, padB=26;
+    const x0=padL, x1=W-padR, y0=padT, y1=H-padB;
+    const X=k=> x0 + (k/K)*(x1-x0);
+    // y-range about [-8, 8]
+    const Y=m=> (y0+y1)/2 - (m/8)*((y1-y0)/2);
+    // zero line
+    ctx.strokeStyle='rgba(243,239,230,.35)'; ctx.lineWidth=1; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(x0,Y(0)); ctx.lineTo(x1,Y(0)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle='rgba(243,239,230,.5)'; ctx.font='10px ui-monospace,monospace';
+    ctx.textAlign='left'; ctx.fillText('class 1', x0+4, Y(6));
+    ctx.fillText('class 0', x0+4, Y(-6)+3);
+    // switch marker + shaded region
+    ctx.fillStyle='rgba(200,85,43,.08)'; ctx.fillRect(X(kstar),y0,x1-X(kstar),y1-y0);
+    ctx.strokeStyle='rgba(224,162,60,.8)'; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(X(kstar),y0); ctx.lineTo(X(kstar),y1); ctx.stroke(); ctx.setLineDash([]);
+    // baseline curve
+    ctx.strokeStyle='rgba(63,115,166,.9)'; ctx.lineWidth=2; ctx.setLineDash([6,4]);
+    ctx.beginPath();
+    for(let k=0;k<=K;k+=4){ const y=Y(baseMargin(k)); k===0?ctx.moveTo(X(k),y):ctx.lineTo(X(k),y); }
+    ctx.stroke(); ctx.setLineDash([]);
+    // steered curve: follows baseline until kstar, then bends upward by gain
+    ctx.strokeStyle='#c8552b'; ctx.lineWidth=2.6;
+    ctx.beginPath();
+    let crossed=false, crossK=null;
+    for(let k=0;k<=K;k+=2){
+      let m=baseMargin(k);
+      if(k>=kstar){
+        const ramp=(k-kstar)/Math.max(1,(K-kstar));
+        m += gain*12*ramp; // push toward class 1
+      }
+      const y=Y(m);
+      k===0?ctx.moveTo(X(k),y):ctx.lineTo(X(k),y);
+      if(!crossed && k>=kstar && m>=0){ crossed=true; crossK=k; }
+    }
+    ctx.stroke();
+    // crossover dot + verdict
+    if(crossed){
+      ctx.fillStyle='#e0a23c'; ctx.beginPath(); ctx.arc(X(crossK),Y(0),4,0,2*Math.PI); ctx.fill();
+    }
+    ctx.textAlign='right'; ctx.font='12px ui-monospace,monospace';
+    ctx.fillStyle = crossed ? '#cdbf9a' : 'rgba(243,239,230,.7)';
+    ctx.fillText(crossed?'flipped \u2192 class 1':'stays class 0', x1-4, y0+14);
+    ctx.fillStyle='rgba(243,239,230,.5)'; ctx.textAlign='center';
+    ctx.fillText('time k \u2192', (x0+x1)/2, H-6);
+  }
+  draw();
+  [swEl,gEl].forEach(e=>e.addEventListener('input',draw));
+})();
+</script>
+</body>
+</html>

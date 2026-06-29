@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The hidden waves inside sequence models</title>
+<style>
+  :root{
+    /* palette pulled from the paper's cyclic phase colormap */
+    --ink:#101820;        /* deep navy-black */
+    --paper:#f3efe6;      /* warm paper */
+    --paper-2:#e9e3d6;
+    --wave-deep:#1d3b5c;  /* phase trough */
+    --wave-mid:#3f73a6;
+    --wave-crest:#cdbf9a; /* phase crest, sandy */
+    --signal:#c8552b;     /* terracotta, the "input" accent */
+    --signal-2:#e0a23c;
+    --line:rgba(16,24,32,.14);
+    --line-strong:rgba(16,24,32,.3);
+    --mut:#5d6670;
+    --maxw:760px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    font-size:19px;line-height:1.65;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+  .mono{font-family:"SF Mono",ui-monospace,"Cascadia Code",Menlo,Consolas,monospace}
+
+  /* ---------- HERO ---------- */
+  header.hero{
+    position:relative;overflow:hidden;
+    background:var(--ink);color:var(--paper);
+    border-bottom:1px solid #000;
+  }
+  #heroCanvas{display:block;width:100%;height:46vh;min-height:300px;max-height:440px}
+  .hero-text{
+    position:absolute;left:0;right:0;bottom:0;padding:26px 22px 30px;
+    background:linear-gradient(to top,rgba(16,24,32,.92),rgba(16,24,32,.0));
+  }
+  .hero-text .inner{max-width:var(--maxw);margin:0 auto}
+  .eyebrow{
+    font-family:"SF Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--signal-2);margin:0 0 10px;font-weight:600;
+  }
+  h1{
+    font-size:clamp(31px,6.4vw,56px);line-height:1.02;margin:0;font-weight:600;
+    letter-spacing:-.01em;text-wrap:balance;
+  }
+  h1 em{font-style:italic;color:var(--wave-crest)}
+  .deck{margin:14px 0 0;font-size:18px;color:rgba(243,239,230,.82);max-width:560px}
+
+  /* ---------- BODY ---------- */
+  main{padding:54px 0 80px}
+  section{margin:0 0 8px}
+  .lede{font-size:23px;line-height:1.5}
+  p{margin:0 0 22px}
+  h2{
+    font-size:clamp(25px,4vw,33px);line-height:1.1;margin:62px 0 6px;font-weight:600;
+    letter-spacing:-.01em;text-wrap:balance;
+  }
+  .sec-num{
+    display:block;font-family:"SF Mono",ui-monospace,monospace;font-size:12px;
+    letter-spacing:.2em;color:var(--signal);margin-bottom:14px;font-weight:600;
+  }
+  a{color:var(--signal);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px}
+  strong{font-weight:600}
+  .term{border-bottom:2px solid var(--signal-2);padding-bottom:1px}
+
+  blockquote{
+    margin:30px 0;padding:4px 0 4px 22px;border-left:3px solid var(--signal);
+    font-size:21px;line-height:1.45;font-style:italic;color:#22303c;
+  }
+
+  /* equation chips */
+  .eq{
+    display:block;margin:24px auto;padding:16px 18px;background:var(--ink);color:var(--paper);
+    border-radius:8px;font-family:"SF Mono",ui-monospace,monospace;font-size:15px;
+    text-align:center;overflow-x:auto;letter-spacing:.01em;
+  }
+  .eq .small{color:var(--wave-crest);font-size:12px;display:block;margin-top:8px;letter-spacing:.04em}
+
+  /* ---------- interactive panels ---------- */
+  .panel{
+    margin:34px 0;padding:22px;background:#fff;border:1px solid var(--line);
+    border-radius:12px;box-shadow:0 1px 0 rgba(16,24,32,.04),0 14px 30px -22px rgba(16,24,32,.5);
+  }
+  .panel h3{
+    margin:0 0 4px;font-size:14px;font-family:"SF Mono",ui-monospace,monospace;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--mut);font-weight:600;
+  }
+  .panel .cap{font-size:15px;color:var(--mut);line-height:1.45;margin:0 0 16px}
+  .panel canvas{display:block;width:100%;border-radius:6px;background:var(--ink)}
+  .controls{display:flex;flex-wrap:wrap;gap:18px 26px;align-items:center;margin-top:16px}
+  .ctl{display:flex;flex-direction:column;gap:5px;min-width:130px;flex:1}
+  .ctl label{font-size:12px;font-family:"SF Mono",ui-monospace,monospace;letter-spacing:.06em;color:var(--mut);text-transform:uppercase}
+  .ctl .val{color:var(--signal);font-weight:700}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+    background:var(--paper-2);outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+    background:var(--signal);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:16px;height:16px;border-radius:50%;background:var(--signal);
+    border:3px solid #fff;cursor:pointer;
+  }
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  button.tap{
+    font-family:"SF Mono",ui-monospace,monospace;font-size:13px;letter-spacing:.04em;
+    padding:9px 16px;border-radius:7px;border:1px solid var(--ink);background:var(--ink);
+    color:var(--paper);cursor:pointer;transition:transform .08s,background .15s;font-weight:600;
+  }
+  button.tap:hover{background:#2a3947}
+  button.tap:active{transform:translateY(1px)}
+  button.tap.ghost{background:transparent;color:var(--ink)}
+  button.tap.ghost:hover{background:var(--paper-2)}
+  button.tap.on{background:var(--signal);border-color:var(--signal)}
+
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--mut);margin-top:14px;align-items:center}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:14px;height:14px;border-radius:3px;display:inline-block}
+
+  figure{margin:30px 0}
+  figcaption{font-size:14px;color:var(--mut);line-height:1.5;margin-top:10px;font-family:"SF Mono",ui-monospace,monospace;letter-spacing:.01em}
+
+  .pull{
+    font-size:clamp(22px,3.6vw,30px);line-height:1.25;font-weight:600;letter-spacing:-.01em;
+    margin:56px 0;color:var(--wave-deep);text-wrap:balance;
+  }
+
+  .keycard{
+    display:grid;grid-template-columns:auto 1fr;gap:4px 18px;margin:30px 0;
+    padding:22px;border:1px solid var(--line);border-radius:12px;background:var(--paper-2);
+  }
+  .keycard .n{font-family:"SF Mono",ui-monospace,monospace;color:var(--signal);font-weight:700;font-size:15px}
+  .keycard .t{margin:0 0 14px}
+  .keycard .t:last-child{margin-bottom:0}
+
+  footer{
+    border-top:1px solid var(--line-strong);margin-top:60px;padding:34px 0 70px;
+    font-size:14px;color:var(--mut);
+  }
+  footer .authors{color:var(--ink);margin-bottom:6px}
+  footer a{color:var(--mut)}
+
+  .progress{position:fixed;top:0;left:0;height:3px;background:var(--signal);width:0;z-index:50}
+
+  .backlink{display:inline-flex;align-items:center;gap:8px;margin:0 0 30px;
+    font-family:"SF Mono",ui-monospace,monospace;font-size:13px;letter-spacing:.04em;color:var(--mut)}
+  .backlink:hover{color:var(--signal)}
+
+  @media (max-width:640px){
+    body{font-size:18px}
+    .controls{gap:14px 18px}
+    .ctl{min-width:46%}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="prog"></div>
+
+<header class="hero">
+  <canvas id="heroCanvas"></canvas>
+  <div class="hero-text">
+    <div class="inner">
+      <p class="eyebrow">Interpretability &middot; Dynamical systems</p>
+      <h1>The hidden <em>waves</em> inside sequence models</h1>
+      <p class="deck">A new result shows that a leading family of AI sequence models is mathematically the same thing as a ring of coupled oscillators, and that it computes by sending waves around that ring.</p>
+    </div>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <a class="backlink" href="blog.html">← All writing</a>
+
+  <p class="lede">Modern language and sequence models are famously hard to explain. We can watch what they output, but tracing <em>why</em> a particular input leads to a particular answer usually means poking at the model from the outside, one case at a time.</p>
+
+  <p>A recent paper by Shikder, Dey, and colleagues at Western University and the Fields Institute takes a different route. Instead of probing a trained model empirically, they derive, from first principles and on paper, an exact mathematical description of what one important class of these models actually computes, from input all the way to output.</p>
+
+  <p>The surprise is what that description turns out to be: a network of <span class="term">coupled oscillators on a ring</span>, computing by passing <strong>traveling waves</strong> around it. Below you can play with the waves yourself.</p>
+
+  <!-- ===================== SECTION 1 ===================== -->
+  <section>
+    <h2><span class="sec-num">01 / The bottleneck</span>Why not just use Transformers?</h2>
+
+    <p>Transformers, the architecture behind most large language models, capture relationships between words using <strong>attention</strong>, comparing every token in a sequence against every other token. That's powerful, but it's expensive: the cost grows with the <em>square</em> of the sequence length. Double the context, quadruple the work.</p>
+
+    <p><span class="term">State space models</span> (SSMs) sidestep this. Rather than comparing all pairs of tokens, they push each input into a small internal network and let it reverberate. The network's evolving state quietly accumulates a memory of everything it has seen. Cost grows only <em>linearly</em> with sequence length, and on many benchmarks SSMs now match or beat Transformers.</p>
+
+    <p>SSMs also carry a second, quieter promise. Their internal dynamics are <strong>linear</strong>, and linear systems are mathematically solvable. That opens a door that attention slams shut: the possibility of <em>actually solving</em> the model rather than just observing it.</p>
+  </section>
+
+  <!-- ===================== SECTION 2 ===================== -->
+  <section>
+    <h2><span class="sec-num">02 / The correspondence</span>An SSM is a ring of oscillators</h2>
+
+    <p>Here is the paper's central move. The authors had previously found an exact solution for a particular network of nonlinear oscillators arranged on a ring. They show that the recurrent core of a widely-used SSM, the diagonal model <span class="mono">S4D</span>, turns out after a change of variables to be <strong>the very same system</strong>.</p>
+
+    <p>The bridge is a clean piece of mathematics. Both systems advance their state by repeatedly applying a single operator. Writing the network's nodes in the right basis, the discrete Fourier modes of a ring, turns that operator <em>diagonal</em>, meaning each mode evolves completely independently of the others:</p>
+
+    <div class="eq">
+      x<sub>k</sub> = e<sup>D&tau;</sup> x<sub>k&minus;1</sub> + B&#773; u<sub>k</sub>
+      <span class="small">state update: evolve, then inject the new input u<sub>k</sub></span>
+    </div>
+
+    <p>Matching the two systems' operators term-for-term makes them equivalent. And that equivalence hands us something the SSM never made explicit on its own: a concrete <strong>physical picture</strong>. The abstract latent state becomes activity spread over a ring of nodes, and each independent mode becomes a wave circling that ring at its own speed.</p>
+
+    <!-- INTERACTIVE 1: the ring -->
+    <div class="panel">
+      <h3>Interactive &middot; The ring</h3>
+      <p class="cap">This is the network the math reveals. Each dot is a node; color is its phase. With the right connections, activity organizes into a coherent <strong>traveling wave</strong>: the curl of color sweeping around the ring. Drag <em>wave number</em> to change how many crests fit around the loop, and <em>speed</em> to set how fast it travels.</p>
+      <canvas id="ringCanvas" height="300"></canvas>
+      <div class="controls">
+        <div class="ctl">
+          <label>Wave number <span class="val" id="ringKVal">3</span></label>
+          <input type="range" id="ringK" min="0" max="8" step="1" value="3">
+        </div>
+        <div class="ctl">
+          <label>Speed <span class="val" id="ringSVal">1.0&times;</span></label>
+          <input type="range" id="ringS" min="0" max="2.5" step="0.1" value="1">
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:#1d3b5c"></span> phase &minus;&pi;</span>
+        <span><span class="swatch" style="background:#3f73a6"></span> 0</span>
+        <span><span class="swatch" style="background:#cdbf9a"></span> +&pi;</span>
+      </div>
+    </div>
+  </section>
+
+  <p class="pull">The model's "memory" isn't stored in abstract numbers. It's stored as waves: the recent past written into the shape of activity circling the ring.</p>
+
+  <!-- ===================== SECTION 3 ===================== -->
+  <section>
+    <h2><span class="sec-num">03 / Storing the past</span>Each input excites its own wave</h2>
+
+    <p>Because every mode runs independently, an incoming signal gets split across them like light through a prism. A signal that wiggles at a particular rate resonates with the mode whose natural frequency matches it, exciting that wave strongly while leaving others quiet.</p>
+
+    <p>The authors test this directly. They train <span class="mono">S4D</span> to sort noisy signals into three buckets: ones hiding a 15&nbsp;Hz tone, ones hiding a 20&nbsp;Hz tone, and pure noise. The classes look nearly identical buried in the noise, but a single resonant mode lights up differently for each, and that's enough to tell them apart.</p>
+
+    <!-- INTERACTIVE 2: resonance -->
+    <div class="panel">
+      <h3>Interactive &middot; Resonance</h3>
+      <p class="cap">A bank of wave modes, each tuned to a different frequency (left). Sweep the input frequency and watch which mode rings loudest. The strongest responder is what the model reads off to classify the signal. Notice how a small shift in input frequency moves the energy to a neighboring mode. That's the 15&nbsp;Hz / 20&nbsp;Hz distinction in miniature.</p>
+      <canvas id="resCanvas" height="260"></canvas>
+      <div class="controls">
+        <div class="ctl">
+          <label>Input frequency <span class="val" id="resFVal">15 Hz</span></label>
+          <input type="range" id="resF" min="5" max="30" step="0.5" value="15">
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--wave-mid)"></span> mode energy</span>
+        <span><span class="swatch" style="background:var(--signal)"></span> loudest mode</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 4 ===================== -->
+  <section>
+    <h2><span class="sec-num">04 / The hard part</span>What the nonlinearity does</h2>
+
+    <p>Simple signals can be separated by wave energy alone. But real-world data, whether language, EEG, or sensor streams, isn't a clean tone. It smears across many modes at once, and pulling it apart needs more than reading off how loud each wave is.</p>
+
+    <p>That "more" comes from the <span class="term">nonlinear activation</span> the model applies after its linear core (here, a function called GELU). Nonlinearities are exactly what makes end-to-end analysis hard: even if you fully understand the linear waves, the nonlinearity scrambles them in ways that resist clean description.</p>
+
+    <p>The authors crack this with a classical tool called <strong>Carleman embedding</strong>, which rewrites the nonlinearity as an infinite, but orderly, hierarchy of wave interactions:</p>
+
+    <div class="keycard">
+      <div class="n">r = 1</div>
+      <p class="t"><strong>Single waves.</strong> The plain response: the waves each input excites on its own. This first order alone explains <strong>83%</strong> of the model's accuracy on a real EEG task.</p>
+      <div class="n">r = 2</div>
+      <p class="t"><strong>Pairs of waves.</strong> The nonlinearity makes two waves interact, in a way that depends on their relative <em>phase</em>, not just their loudness. Adding this term lifts the explanation to <strong>94%</strong>.</p>
+      <div class="n">r &ge; 3</div>
+      <p class="t"><strong>Many-wave interactions.</strong> Progressively finer corrections. Including the full activation reaches <strong>100%</strong>, confirming the expansion converges to the real model.</p>
+    </div>
+
+    <p>The headline: most of what the model does is captured by waves and <em>pairs</em> of interacting waves. The crucial extra ingredient beyond simple resonance is <strong>phase</strong>: two waves carrying the same energy can cooperate or cancel depending on their alignment.</p>
+
+    <!-- INTERACTIVE 3: two-wave interaction -->
+    <div class="panel">
+      <h3>Interactive &middot; Two waves interacting</h3>
+      <p class="cap">Two modes (blue and gold) and their nonlinear interaction (terracotta), which is roughly their product. Slide the <em>phase offset</em> between the waves. When they line up, the interaction swells; when they oppose, it cancels, even though neither wave changed its amplitude. <strong>This phase-sensitivity is the information real-world classification relies on.</strong></p>
+      <canvas id="twoCanvas" height="240"></canvas>
+      <div class="controls">
+        <div class="ctl">
+          <label>Phase offset <span class="val" id="phVal">0.00&pi;</span></label>
+          <input type="range" id="ph" min="0" max="2" step="0.01" value="0">
+        </div>
+        <div class="ctl">
+          <label>Frequency ratio <span class="val" id="frVal">1.5</span></label>
+          <input type="range" id="fr" min="1" max="3" step="0.5" value="1.5">
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--wave-mid)"></span> wave A</span>
+        <span><span class="swatch" style="background:var(--signal-2)"></span> wave B</span>
+        <span><span class="swatch" style="background:var(--signal)"></span> interaction A&times;B</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 5 ===================== -->
+  <section>
+    <h2><span class="sec-num">05 / The payoff</span>One equation for the whole forward pass</h2>
+
+    <p>Putting it together, the paper writes a single closed-form operator that maps any input sequence to the model's output classification, the complete forward pass with linear core and nonlinearity included:</p>
+
+    <div class="eq">
+      O = (1/T) &middot; W &middot; &Sigma;<sub>k</sub> &Lambda;( &real;( C [ D&tau; x<sub>k</sub> + B&#773; u<sub>k</sub> ] ) )
+      <span class="small">input u<sub>k</sub> &rarr; recurrence &rarr; mode mixing C &rarr; nonlinearity &Lambda; &rarr; readout W &rarr; output O</span>
+    </div>
+
+    <p>This is the thing post-hoc interpretability can't give you: not a measurement of the trained model, but a <strong>derivation</strong> of it. In principle you can predict what the model will output without even running it, and read directly which waves and which wave-interactions drive each decision.</p>
+
+    <blockquote>The forward pass shifts from something you probe empirically to something you can write down, term by term.</blockquote>
+
+    <p>The authors note this generalizes across diagonal SSM variants, and point toward two payoffs. <strong>Design:</strong> tuning the connectivity could engineer longer-lived waves that hold longer-range dependencies. <strong>Control and safety:</strong> if you know the exact mapping from input to output, you might steer it deliberately, a kind of guarantee that's simply unavailable when interpretability rests on observation alone.</p>
+  </section>
+
+  <!-- ===================== TAKEAWAYS ===================== -->
+  <section>
+    <h2><span class="sec-num">06 / In a sentence</span>The takeaways</h2>
+    <div class="keycard">
+      <div class="n">&#9655;</div>
+      <p class="t">A leading SSM (<span class="mono">S4D</span>) is exactly equivalent to a solvable ring of coupled oscillators.</p>
+      <div class="n">&#9655;</div>
+      <p class="t">It stores the recent past as <strong>traveling waves</strong> circling that ring; different inputs excite different waves.</p>
+      <div class="n">&#9655;</div>
+      <p class="t">Its nonlinearity makes waves <strong>interact by phase</strong>, and just single waves plus pairs explain 94% of real-task performance.</p>
+      <div class="n">&#9655;</div>
+      <p class="t">The whole input-to-output map is one explicit equation, turning interpretability from observation into <strong>derivation</strong>.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p class="authors">"An explicit operator explains end-to-end computation in the modern neural networks used for sequence and language modeling." <a href="https://arxiv.org/pdf/2604.20595">(https://arxiv.org/pdf/2604.20595)</a></p>
+    <p>A.&nbsp;N.&nbsp;Shikder, R.&nbsp;Dey, S.&nbsp;Auddy, L.&nbsp;Liboni, A.&nbsp;Busch, A.&nbsp;Powanwe, J.&nbsp;Min&aacute;&#269;, R.&nbsp;C.&nbsp;Budzinski &amp; L.&nbsp;E.&nbsp;Muller. Western University &amp; the Fields Institute. Code: <a href="https://mullerlab.github.io">mullerlab.github.io</a>.</p>
+    <p style="margin-top:14px">This is an informal explainer of the paper, not a substitute for it. Figures and numbers are paraphrased from the authors' work; the interactive demos are illustrative recreations of the concepts, not the trained model itself.</p>
+  </div>
+</footer>
+</main>
+
+<script>
+"use strict";
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+
+// cyclic phase colormap (deep navy -> blue -> sandy crest -> back)
+function phaseColor(p){ // p in [-PI, PI]
+  const t = (p + Math.PI) / (2*Math.PI); // 0..1
+  // three-stop cyclic-ish ramp matching --wave vars
+  const stops = [
+    [29,59,92],   // -pi deep
+    [63,115,166], // mid
+    [205,191,154],// crest
+    [63,115,166], // mid
+    [29,59,92]    // +pi back to deep
+  ];
+  const seg = t*(stops.length-1);
+  const i = Math.floor(seg), f = seg-i;
+  const a = stops[i], b = stops[Math.min(i+1,stops.length-1)];
+  const r = Math.round(a[0]+(b[0]-a[0])*f);
+  const g = Math.round(a[1]+(b[1]-a[1])*f);
+  const bl= Math.round(a[2]+(b[2]-a[2])*f);
+  return `rgb(${r},${g},${bl})`;
+}
+
+function fitCanvas(c, cssH){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const w = c.clientWidth;
+  c.width = w*dpr; c.height = cssH*dpr;
+  c.style.height = cssH+'px';
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx, w, h:cssH};
+}
+
+/* ---------- progress bar ---------- */
+const prog = document.getElementById('prog');
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  const sc = h.scrollTop/(h.scrollHeight-h.clientHeight);
+  prog.style.width = (sc*100)+'%';
+}, {passive:true});
+
+/* ================= HERO: stacked traveling waves ================= */
+(function(){
+  const c = document.getElementById('heroCanvas');
+  let dim = fitCanvas(c, c.clientHeight||360);
+  const ctx = dim.ctx;
+  window.addEventListener('resize', ()=>{ dim = fitCanvas(c, c.clientHeight||360); });
+  const N = 64;          // spatial samples
+  const rows = ()=>Math.floor(dim.h); // we draw a field
+  let t=0;
+  function frame(){
+    const W=dim.w, H=dim.h;
+    ctx.clearRect(0,0,W,H);
+    const cols = 120;
+    const cw = W/cols, ch = H/40;
+    for(let yi=0; yi<40; yi++){
+      for(let xi=0; xi<cols; xi++){
+        const x = xi/cols;
+        // superposition of a few modes -> phase field
+        const phase = Math.sin(2*Math.PI*(3*x) - t*0.9 + yi*0.12)
+                    + 0.6*Math.sin(2*Math.PI*(5*x) - t*1.4 + yi*0.05)
+                    + 0.4*Math.sin(2*Math.PI*(2*x) + t*0.5);
+        const p = Math.atan2(Math.sin(phase),Math.cos(phase)); // wrap to [-pi,pi]
+        ctx.fillStyle = phaseColor(p);
+        ctx.fillRect(xi*cw, yi*ch, cw+1, ch+1);
+      }
+    }
+    if(!reduceMotion){ t+=0.04; requestAnimationFrame(frame); }
+  }
+  frame();
+})();
+
+/* ================= INTERACTIVE 1: the ring ================= */
+(function(){
+  const c = document.getElementById('ringCanvas');
+  let dim = fitCanvas(c, 300); let ctx = dim.ctx;
+  window.addEventListener('resize', ()=>{ dim=fitCanvas(c,300); ctx=dim.ctx; });
+  const kEl=document.getElementById('ringK'), sEl=document.getElementById('ringS');
+  const kV=document.getElementById('ringKVal'), sV=document.getElementById('ringSVal');
+  const N=44; let t=0;
+  function frame(){
+    const W=dim.w,H=dim.h; ctx.clearRect(0,0,W,H);
+    const cx=W/2, cy=H/2, R=Math.min(W,H)*0.36;
+    const k=+kEl.value, sp=+sEl.value;
+    kV.textContent=k; sV.textContent=sp.toFixed(1)+'\u00d7';
+    // connection hint ring
+    ctx.strokeStyle='rgba(243,239,230,.12)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,2*Math.PI); ctx.stroke();
+    for(let i=0;i<N;i++){
+      const a = (i/N)*2*Math.PI - Math.PI/2;
+      const x = cx+Math.cos(a)*R, y=cy+Math.sin(a)*R;
+      const phase = k===0 ? Math.sin(t*sp) : Math.atan2(
+        Math.sin(2*Math.PI*k*(i/N) - t*sp),
+        Math.cos(2*Math.PI*k*(i/N) - t*sp));
+      const amp = 6 + 5*Math.cos(phase);
+      ctx.fillStyle=phaseColor(phase);
+      ctx.beginPath(); ctx.arc(x,y,amp,0,2*Math.PI); ctx.fill();
+    }
+    if(!reduceMotion){ t+=0.035; requestAnimationFrame(frame);} 
+  }
+  if(reduceMotion){ frame(); } else { frame(); }
+  [kEl,sEl].forEach(e=>e.addEventListener('input',()=>{ if(reduceMotion) frame(); }));
+})();
+
+/* ================= INTERACTIVE 2: resonance ================= */
+(function(){
+  const c=document.getElementById('resCanvas');
+  let dim=fitCanvas(c,260); let ctx=dim.ctx;
+  window.addEventListener('resize',()=>{dim=fitCanvas(c,260);ctx=dim.ctx;draw();});
+  const fEl=document.getElementById('resF'), fV=document.getElementById('resFVal');
+  const M=18;
+  const modeFreqs=[]; for(let i=0;i<M;i++) modeFreqs.push(5 + i*(25/(M-1)));
+  function draw(){
+    const W=dim.w,H=dim.h; ctx.clearRect(0,0,W,H);
+    const f=+fEl.value; fV.textContent=f.toFixed(1)+' Hz';
+    const pad=24, bw=(W-pad*2)/M, base=H-30;
+    // energy = lorentzian resonance around input freq
+    let best=0,bestE=-1;
+    const E=modeFreqs.map((mf,i)=>{
+      const e=1/(1+Math.pow((mf-f)/1.6,2));
+      if(e>bestE){bestE=e;best=i;}
+      return e;
+    });
+    for(let i=0;i<M;i++){
+      const h=E[i]*(base-16);
+      ctx.fillStyle = i===best ? '#c8552b' : 'rgba(63,115,166,.85)';
+      const x=pad+i*bw+2;
+      ctx.fillRect(x, base-h, bw-4, h);
+    }
+    // axis
+    ctx.strokeStyle='rgba(243,239,230,.25)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad,base); ctx.lineTo(W-pad,base); ctx.stroke();
+    ctx.fillStyle='rgba(243,239,230,.6)';
+    ctx.font='11px ui-monospace,monospace'; ctx.textAlign='center';
+    ctx.fillText('mode (low freq \u2192 high freq)', W/2, H-8);
+    // marker for input freq position
+    const fx=pad+((f-5)/25)*(W-pad*2);
+    ctx.strokeStyle='rgba(224,162,60,.9)'; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(fx,12); ctx.lineTo(fx,base); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle='#e0a23c'; ctx.textAlign='left';
+    ctx.fillText('input', Math.min(fx+6,W-50), 20);
+  }
+  draw();
+  fEl.addEventListener('input',draw);
+})();
+
+/* ================= INTERACTIVE 3: two interacting waves ================= */
+(function(){
+  const c=document.getElementById('twoCanvas');
+  let dim=fitCanvas(c,240); let ctx=dim.ctx;
+  window.addEventListener('resize',()=>{dim=fitCanvas(c,240);ctx=dim.ctx;});
+  const phEl=document.getElementById('ph'), phV=document.getElementById('phVal');
+  const frEl=document.getElementById('fr'), frV=document.getElementById('frVal');
+  let t=0;
+  function frame(){
+    const W=dim.w,H=dim.h; ctx.clearRect(0,0,W,H);
+    const off=(+phEl.value)*Math.PI, ratio=+frEl.value;
+    phV.textContent=(+phEl.value).toFixed(2)+'\u03c0';
+    frV.textContent=ratio.toFixed(1);
+    const mid=H/2, amp=H*0.26;
+    function plot(fn,color,lw){
+      ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.beginPath();
+      for(let px=0;px<=W;px++){
+        const x=px/W*4*Math.PI;
+        const y=mid-fn(x)*amp;
+        px===0?ctx.moveTo(px,y):ctx.lineTo(px,y);
+      }
+      ctx.stroke();
+    }
+    const A=x=>Math.sin(x - t*0.6);
+    const B=x=>Math.sin(ratio*x - t*0.6 + off);
+    // zero line
+    ctx.strokeStyle='rgba(243,239,230,.18)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(W,mid); ctx.stroke();
+    // interaction fill
+    ctx.fillStyle='rgba(200,85,43,.22)'; ctx.beginPath(); ctx.moveTo(0,mid);
+    for(let px=0;px<=W;px++){ const x=px/W*4*Math.PI; ctx.lineTo(px, mid-A(x)*B(x)*amp); }
+    ctx.lineTo(W,mid); ctx.closePath(); ctx.fill();
+    plot(A,'rgba(63,115,166,.9)',2);
+    plot(B,'rgba(224,162,60,.9)',2);
+    plot(x=>A(x)*B(x),'#c8552b',2.6);
+    if(!reduceMotion){ t+=0.05; requestAnimationFrame(frame);} 
+  }
+  frame();
+  [phEl,frEl].forEach(e=>e.addEventListener('input',()=>{ if(reduceMotion) frame(); }));
+})();
+</script>
+</body>
+</html>
